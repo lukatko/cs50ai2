@@ -2,6 +2,7 @@ import os
 import random
 import re
 import sys
+import numpy as np
 
 DAMPING = 0.85
 SAMPLES = 10000
@@ -57,7 +58,14 @@ def transition_model(corpus, page, damping_factor):
     linked to by `page`. With probability `1 - damping_factor`, choose
     a link at random chosen from all pages in the corpus.
     """
-    raise NotImplementedError
+    transition_dict = {}
+    transition_dict[page] = (1 - damping_factor) / len(corpus)
+    for i in corpus[page]:
+        transition_dict[i] = transition_dict[page] + damping_factor / len(corpus[page])
+    for i in corpus.keys():
+        transition_dict[i] = transition_dict.get(i, transition_dict[page])
+    return transition_dict
+    
 
 
 def sample_pagerank(corpus, damping_factor, n):
@@ -69,10 +77,32 @@ def sample_pagerank(corpus, damping_factor, n):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    sample = random.choice(list(corpus.keys()))
+    probabilities = {}
+    for i in range(n):
+        transition_probs = transition_model(corpus, sample, damping_factor)
+        probs = []
+        for j in corpus.keys():
+            probs.append(transition_probs[j])
+        if (sum(probs) != 1):
+            probs[random.randint(0, len(probs) - 1)] += 1 - sum(probs)
+        sample = np.random.choice(list(corpus.keys()), 1, p = probs)[0]
+        probabilities[sample] = probabilities.get(sample, 0) + (1 / n)
+        
+    return probabilities
 
+def PR(page, pagerank, corpus, damping_factor):
+    suma = 0
+    links = []
+    for i in corpus.keys():
+        if (page in corpus[i]):
+            links.append(i)
+    for i in links:
+        suma += (pagerank[i] / len(corpus[i]))
+    suma *= damping_factor
+    pagerank[page] = suma + (1 - damping_factor) / len(corpus)
 
-def iterate_pagerank(corpus, damping_factor):
+def iterate_pagerank(corpus, damping_factor, threshold = 0.001):
     """
     Return PageRank values for each page by iteratively updating
     PageRank values until convergence.
@@ -81,7 +111,21 @@ def iterate_pagerank(corpus, damping_factor):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
-    raise NotImplementedError
+    pagerank = {}
+    for i in corpus.keys():
+        pagerank[i] = 1 / (len(corpus))
+    flag = 0
+    while True:
+        for i in corpus.keys():
+            old_value = pagerank[i]
+            PR(i, pagerank, corpus, damping_factor)
+            if (abs(old_value - pagerank[i]) <= threshold):
+                flag = 1
+        if flag:
+            break
+    return pagerank
+
+
 
 
 if __name__ == "__main__":
