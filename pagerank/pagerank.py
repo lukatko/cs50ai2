@@ -3,6 +3,7 @@ import random
 import re
 import sys
 import numpy as np
+import copy
 
 DAMPING = 0.85
 SAMPLES = 10000
@@ -84,8 +85,12 @@ def sample_pagerank(corpus, damping_factor, n):
         probs = []
         for j in corpus.keys():
             probs.append(transition_probs[j])
-        if (sum(probs) != 1):
-            probs[random.randint(0, len(probs) - 1)] += 1 - sum(probs)
+        suma = sum(probs)
+        if (suma != 1):
+            for j in probs:
+                j /= suma
+            suma = sum(probs)
+            probs[random.randint(0, len(probs) - 1)] += (1 - suma)
         sample = np.random.choice(list(corpus.keys()), 1, p = probs)[0]
         probabilities[sample] = probabilities.get(sample, 0) + (1 / n)
         
@@ -114,15 +119,21 @@ def iterate_pagerank(corpus, damping_factor, threshold = 0.001):
     pagerank = {}
     for i in corpus.keys():
         pagerank[i] = 1 / (len(corpus))
-    flag = 0
     while True:
+        flag = 1
+        old_values = copy.deepcopy(pagerank)
         for i in corpus.keys():
-            old_value = pagerank[i]
             PR(i, pagerank, corpus, damping_factor)
-            if (abs(old_value - pagerank[i]) <= threshold):
-                flag = 1
-        if flag:
+        for i in pagerank.keys():
+            if (abs(old_values[i] - pagerank[i]) > threshold):
+                flag = 0
+                break
+        if (flag):
             break
+
+    suma = sum(list(pagerank.values()))
+    for v in pagerank.keys():
+        pagerank[v] /= suma
     return pagerank
 
 
